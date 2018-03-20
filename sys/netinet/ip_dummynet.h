@@ -120,7 +120,9 @@ struct dn_link {
 	 * XXX what about burst ?
 	 */
 	int32_t		link_nr;
-	int		bandwidth;	/* bit/s or bits/tick.   */
+//	int		bandwidth;	/* bit/s or bits/tick.   */
+//RUDOLF - change bandwidth to 64bit, previously can hold max 2.1Gb/s only
+	int64_t		bandwidth;	/* bit/s or bits/tick.   */
 	int		delay;		/* ms and ticks */
 	uint64_t	burst;		/* scaled. bits*Hz  XXX */
 };
