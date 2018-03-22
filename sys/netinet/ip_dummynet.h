@@ -86,6 +86,9 @@ enum {
 	DN_SYSCTL_GET,
 	DN_SYSCTL_SET,
 
+	//RUDOLF
+	DN_CMD_REBOOT,
+
 	DN_LAST,
 };
 
