@@ -432,8 +432,7 @@ dn_compat_config_queue(struct dn_fs *fs, void* v)
 }
 
 static int
-dn_compat_config_pipe(struct dn_sch *sch, struct dn_link *p, 
-		      struct dn_fs *fs, void* v)
+dn_compat_config_pipe(struct dn_sch *sch, struct dn_link *p, struct dn_fs *fs, void* v)
 {
 	struct dn_pipe7 *p7 = (struct dn_pipe7 *)v;
 	struct dn_pipe8 *p8 = (struct dn_pipe8 *)v;

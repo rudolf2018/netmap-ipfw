@@ -24,6 +24,16 @@
  * SUCH DAMAGE.
  */
 
+//RUDOLF
+#include <stdarg.h>
+#define BANDWIDTH_1MBIT     1000000L
+#define BANDWIDTH_1GBIT     1000L * BANDWIDTH_1MBIT
+#define BANDWIDTH_5GBIT     5 * BANDWIDTH_1GBIT
+
+#define PER_BWPROF_ENTRY    (200 * 1000)                            // 7 hours of 100ms slots!!
+#define MAX_BWPROF_ENTRY    (200 * 1000 * 500)                      // empirical value
+#define NUM_BWPROF_BLOCK    (MAX_BWPROF_ENTRY / PER_BWPROF_ENTRY)   // number of bw flows to control!!
+
 /*
  * Dummynet portions related to packet handling.
  */
@@ -96,6 +106,25 @@ MALLOC_DEFINE(M_DUMMYNET, "dummynet", "dummynet heap");
 
 extern	void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
 
+//RUDOLF
+struct _bwf_data {
+	int my_init_tick;
+	float my_curr_bw;
+	int my_curr_slot;
+	int nbwvals;
+	int linkid;
+};
+
+//RUDOLF
+extern float bwtstamps[MAX_BWPROF_ENTRY];
+extern float bwvals[MAX_BWPROF_ENTRY];
+extern struct _bwf_data bwfdata[NUM_BWPROF_BLOCK];
+
+int my_init_stage = -1;
+
+extern void mylogger(char *fmt, ...);
+
+
 #ifdef SYSCTL_NODE
 
 /*
@@ -156,68 +185,38 @@ static SYSCTL_NODE(_net_inet_ip, OID_AUTO, dummynet, CTLFLAG_RW, 0, "Dummynet");
 /* parameters */
 
 
-SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, hash_size,
-    CTLTYPE_INT | CTLFLAG_RW, 0, 0, sysctl_hash_size,
-    "I", "Default hash table size");
+SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, hash_size, CTLTYPE_INT | CTLFLAG_RW, 0, 0, sysctl_hash_size, "I", "Default hash table size");
 
 
-SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, pipe_slot_limit,
-    CTLTYPE_LONG | CTLFLAG_RW, 0, 1, sysctl_limits,
-    "L", "Upper limit in slots for pipe queue.");
-SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, pipe_byte_limit,
-    CTLTYPE_LONG | CTLFLAG_RW, 0, 0, sysctl_limits,
-    "L", "Upper limit in bytes for pipe queue.");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, io_fast,
-    CTLFLAG_RW, DC(io_fast), 0, "Enable fast dummynet io.");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, debug,
-    CTLFLAG_RW, DC(debug), 0, "Dummynet debug level");
+SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, pipe_slot_limit, CTLTYPE_LONG | CTLFLAG_RW, 0, 1, sysctl_limits, "L", "Upper limit in slots for pipe queue.");
+SYSCTL_PROC(_net_inet_ip_dummynet, OID_AUTO, pipe_byte_limit, CTLTYPE_LONG | CTLFLAG_RW, 0, 0, sysctl_limits, "L", "Upper limit in bytes for pipe queue.");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, io_fast, CTLFLAG_RW, DC(io_fast), 0, "Enable fast dummynet io.");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, debug, CTLFLAG_RW, DC(debug), 0, "Dummynet debug level");
 
 /* RED parameters */
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_lookup_depth,
-    CTLFLAG_RD, DC(red_lookup_depth), 0, "Depth of RED lookup table");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_avg_pkt_size,
-    CTLFLAG_RD, DC(red_avg_pkt_size), 0, "RED Medium packet size");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_max_pkt_size,
-    CTLFLAG_RD, DC(red_max_pkt_size), 0, "RED Max packet size");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_lookup_depth, CTLFLAG_RD, DC(red_lookup_depth), 0, "Depth of RED lookup table");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_avg_pkt_size, CTLFLAG_RD, DC(red_avg_pkt_size), 0, "RED Medium packet size");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, red_max_pkt_size, CTLFLAG_RD, DC(red_max_pkt_size), 0, "RED Max packet size");
 
 /* time adjustment */
-SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_delta,
-    CTLFLAG_RD, &tick_delta, 0, "Last vs standard tick difference (usec).");
-SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_delta_sum,
-    CTLFLAG_RD, &tick_delta_sum, 0, "Accumulated tick difference (usec).");
-SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_adjustment,
-    CTLFLAG_RD, &tick_adjustment, 0, "Tick adjustments done.");
-SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_diff,
-    CTLFLAG_RD, &tick_diff, 0,
-    "Adjusted vs non-adjusted curr_time difference (ticks).");
-SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_lost,
-    CTLFLAG_RD, &tick_lost, 0,
-    "Number of ticks coalesced by dummynet taskqueue.");
+SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_delta, CTLFLAG_RD, &tick_delta, 0, "Last vs standard tick difference (usec).");
+SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_delta_sum, CTLFLAG_RD, &tick_delta_sum, 0, "Accumulated tick difference (usec).");
+SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_adjustment, CTLFLAG_RD, &tick_adjustment, 0, "Tick adjustments done.");
+SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_diff, CTLFLAG_RD, &tick_diff, 0, "Adjusted vs non-adjusted curr_time difference (ticks).");
+SYSCTL_LONG(_net_inet_ip_dummynet, OID_AUTO, tick_lost, CTLFLAG_RD, &tick_lost, 0, "Number of ticks coalesced by dummynet taskqueue.");
 
 /* Drain parameters */
-SYSCTL_UINT(_net_inet_ip_dummynet, OID_AUTO, expire,
-    CTLFLAG_RW, DC(expire), 0, "Expire empty queues/pipes");
-SYSCTL_UINT(_net_inet_ip_dummynet, OID_AUTO, expire_cycle,
-    CTLFLAG_RD, DC(expire_cycle), 0, "Expire cycle for queues/pipes");
+SYSCTL_UINT(_net_inet_ip_dummynet, OID_AUTO, expire, CTLFLAG_RW, DC(expire), 0, "Expire empty queues/pipes");
+SYSCTL_UINT(_net_inet_ip_dummynet, OID_AUTO, expire_cycle, CTLFLAG_RD, DC(expire_cycle), 0, "Expire cycle for queues/pipes");
 
 /* statistics */
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, schk_count,
-    CTLFLAG_RD, DC(schk_count), 0, "Number of schedulers");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, si_count,
-    CTLFLAG_RD, DC(si_count), 0, "Number of scheduler instances");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, fsk_count,
-    CTLFLAG_RD, DC(fsk_count), 0, "Number of flowsets");
-SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, queue_count,
-    CTLFLAG_RD, DC(queue_count), 0, "Number of queues");
-SYSCTL_ULONG(_net_inet_ip_dummynet, OID_AUTO, io_pkt,
-    CTLFLAG_RD, &io_pkt, 0,
-    "Number of packets passed to dummynet.");
-SYSCTL_ULONG(_net_inet_ip_dummynet, OID_AUTO, io_pkt_fast,
-    CTLFLAG_RD, &io_pkt_fast, 0,
-    "Number of packets bypassed dummynet scheduler.");
-SYSCTL_ULONG(_net_inet_ip_dummynet, OID_AUTO, io_pkt_drop,
-    CTLFLAG_RD, &io_pkt_drop, 0,
-    "Number of packets dropped by dummynet.");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, schk_count, CTLFLAG_RD, DC(schk_count), 0, "Number of schedulers");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, si_count, CTLFLAG_RD, DC(si_count), 0, "Number of scheduler instances");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, fsk_count, CTLFLAG_RD, DC(fsk_count), 0, "Number of flowsets");
+SYSCTL_INT(_net_inet_ip_dummynet, OID_AUTO, queue_count, CTLFLAG_RD, DC(queue_count), 0, "Number of queues");
+SYSCTL_ULONG(_net_inet_ip_dummynet, OID_AUTO, io_pkt, CTLFLAG_RD, &io_pkt, 0, "Number of packets passed to dummynet.");
+SYSCTL_ULONG(_net_inet_ip_dummynet, OID_AUTO, io_pkt_fast, CTLFLAG_RD, &io_pkt_fast, 0, "Number of packets bypassed dummynet scheduler.");
+SYSCTL_ULONG(_net_inet_ip_dummynet, OID_AUTO, io_pkt_drop, CTLFLAG_RD, &io_pkt_drop, 0, "Number of packets dropped by dummynet.");
 #undef DC
 SYSEND
 
@@ -250,10 +249,7 @@ static struct dn_pkt_tag *
 dn_tag_get(struct mbuf *m)
 {
 	struct m_tag *mtag = m_tag_first(m);
-	KASSERT(mtag != NULL &&
-	    mtag->m_tag_cookie == MTAG_ABI_COMPAT &&
-	    mtag->m_tag_id == PACKET_TAG_DUMMYNET,
-	    ("packet on dummynet queue w/o dummynet tag!"));
+	KASSERT(mtag != NULL && mtag->m_tag_cookie == MTAG_ABI_COMPAT && mtag->m_tag_id == PACKET_TAG_DUMMYNET, ("packet on dummynet queue w/o dummynet tag!"));
 	return (struct dn_pkt_tag *)(mtag+1);
 }
 
@@ -272,8 +268,7 @@ mq_append(struct mq *q, struct mbuf *m)
 		ofs = m->m_data - m->__m_extbuf;
 		// XXX allocate
 		MGETHDR(m_new, M_NOWAIT, MT_DATA);
-		ND("*** WARNING, volatile buf %p ext %p %d dofs %d m_new %p",
-			m, m->__m_extbuf, m->__m_extlen, ofs, m_new);
+		ND("*** WARNING, volatile buf %p ext %p %d dofs %d m_new %p", m, m->__m_extbuf, m->__m_extlen, ofs, m_new);
 		p = m_new->__m_extbuf;	/* new pointer */
 		l = m_new->__m_extlen;	/* new len */
 		if (l <= m->__m_extlen) {
@@ -377,8 +372,7 @@ red_drops (struct dn_queue *q, int len)
 			 * where c_3 = (1 - max_p) / max_th
 			 *       c_4 = 1 - 2 * max_p
 			 */
-			p_b = SCALE_MUL((int64_t)fs->c_3, (int64_t)q->avg) -
-			    fs->c_4;
+			p_b = SCALE_MUL((int64_t)fs->c_3, (int64_t)q->avg) - fs->c_4;
 		} else {
 			q->count = -1;
 			return (1);
@@ -495,8 +489,7 @@ dn_enqueue(struct dn_queue *q, struct mbuf* m, int drop)
 	uint64_t len;
 
 	if (q->fs == NULL || q->_si == NULL) {
-		printf("%s fs %p si %p, dropping\n",
-			__FUNCTION__, q->fs, q->_si);
+		printf("%s fs %p si %p, dropping\n", __FUNCTION__, q->fs, q->_si);
 		FREE_PKT(m);
 		return 1;
 	}
@@ -606,6 +599,7 @@ serve_sched(struct mq *q, struct dn_sch_inst *si, uint64_t now)
 	}
 
 	bw = s->link.bandwidth;
+
 	si->kflags &= ~DN_ACTIVE;
 
 	if (bw > 0)
@@ -618,8 +612,7 @@ serve_sched(struct mq *q, struct dn_sch_inst *si, uint64_t now)
 		uint64_t len_scaled;
 
 		done++;
-		len_scaled = (bw == 0) ? 0 : hz *
-			(m->m_pkthdr.len * 8 + extra_bits(m, s));
+		len_scaled = (bw == 0) ? 0 : hz * (m->m_pkthdr.len * 8 + extra_bits(m, s));
 		si->credit -= len_scaled;
 		/* Move packet in the delay line */
 		dn_tag_get(m)->output_time = dn_cfg.curr_time + s->link.delay ;
@@ -648,7 +641,7 @@ serve_sched(struct mq *q, struct dn_sch_inst *si, uint64_t now)
 }
 
 /*
- * The timer handler for dummynet. Time is computed in ticks, but
+ * The timer handler for dummynet. Time is computed in ticks,
  * but the code is tolerant to the actual rate at which this is called.
  * Once complete, the function reschedules itself for the next tick.
  */
@@ -698,22 +691,87 @@ dummynet_task(void *context, int pending)
 		tick_adjustment++;
 	}
 
+//RUDOLF
+if (1)
+{
+	int bwfid;
+
+	if (my_init_stage < 0)
+	{
+D("Initializing bandwidth profile index array...");
+		for(bwfid = 0; bwfid < NUM_BWPROF_BLOCK; bwfid++)
+		{
+			bwfdata[bwfid].nbwvals = 0;
+			bwfdata[bwfid].linkid = -1;
+			bwfdata[bwfid].my_init_tick = -1;
+		}
+		my_init_stage = 1;
+	}
+
 	/* serve pending events, accumulate in q */
-	for (;;) {
+	for (;;)
+	{
 		struct dn_id *p;    /* generic parameter to handler */
 
-		if (dn_cfg.evheap.elements == 0 ||
-		    DN_KEY_LT(dn_cfg.curr_time, HEAP_TOP(&dn_cfg.evheap)->key))
+		if (dn_cfg.evheap.elements == 0 || DN_KEY_LT(dn_cfg.curr_time, HEAP_TOP(&dn_cfg.evheap)->key))
 			break;
 		p = HEAP_TOP(&dn_cfg.evheap)->object;
 		heap_extract(&dn_cfg.evheap, NULL);
 
 		if (p->type == DN_SCH_I) {
+//RUDOLF
+if (1)
+{
+int Rdebug = 0;
+			struct dn_sch_inst *si = (struct dn_sch_inst *)p;
+//			si->sched->link.bandwidth = 1000000;
+			for(bwfid = 0; bwfid < NUM_BWPROF_BLOCK; bwfid++)
+			{
+				if ((si->sched->link.link_nr == bwfdata[bwfid].linkid) || (si->sched->link.link_nr == bwfdata[bwfid].linkid + 0x00010000))
+				{
+if (Rdebug)
+D("Search matched bwfid [%d] linkid [%d] <=> [%d]", bwfid, bwfdata[bwfid].linkid, si->sched->link.link_nr);
+					if (bwfdata[bwfid].nbwvals > 0)
+					{
+						float my_clock = 0.0;
+						int base_bw_index = bwfid * PER_BWPROF_ENTRY;
+
+						if (bwfdata[bwfid].my_init_tick < 0)
+						{
+if (Rdebug)
+D("bitrate profile [%d] kick started", bwfid);
+							bwfdata[bwfid].my_init_tick = dn_cfg.curr_time;
+							bwfdata[bwfid].my_curr_slot = 0;
+							mylogger("Bitrate profile [%d] started...\n", bwfid);
+						}
+
+						my_clock = (dn_cfg.curr_time - bwfdata[bwfid].my_init_tick) / 5000.0;
+
+if (Rdebug)
+D("my clock [%f] current tstamp [%f]", my_clock, bwtstamps[base_bw_index + bwfdata[bwfid].my_curr_slot]);
+						if (my_clock >= bwtstamps[base_bw_index + bwfdata[bwfid].my_curr_slot])
+						{
+							bwfdata[bwfid].my_curr_bw = bwvals[base_bw_index + bwfdata[bwfid].my_curr_slot];
+							bwfdata[bwfid].my_curr_slot = (bwfdata[bwfid].my_curr_slot +1) % bwfdata[bwfid].nbwvals;
+if (Rdebug)
+D("link = %d, idx = %d, tick = %lu, init = %d, clock = %f, bw %f", bwfdata[bwfid].linkid, bwfdata[bwfid].my_curr_slot,
+							dn_cfg.curr_time, bwfdata[bwfid].my_init_tick, my_clock, bwfdata[bwfid].my_curr_bw);
+						}
+					}
+					si->sched->link.bandwidth = bwfdata[bwfid].my_curr_bw;
+					break;
+				}
+			}
+if (Rdebug)
+D("using bandwidth = %ld", si->sched->link.bandwidth);
+}
 			serve_sched(&q, (struct dn_sch_inst *)p, dn_cfg.curr_time);
 		} else { /* extracted a delay line */
 			transmit_event(&q, (struct delay_line *)p, dn_cfg.curr_time);
 		}
 	}
+}
+
 	if (dn_cfg.expire && ++dn_cfg.expire_cycle >= dn_cfg.expire) {
 		dn_cfg.expire_cycle = 0;
 		dn_drain_scheduler();
@@ -751,8 +809,7 @@ dummynet_send(struct mbuf *m)
 			/* extract the dummynet info, rename the tag
 			 * to carry reinject info.
 			 */
-			if (pkt->dn_dir == (DIR_OUT | PROTO_LAYER2) &&
-				pkt->ifp == NULL) {
+			if (pkt->dn_dir == (DIR_OUT | PROTO_LAYER2) && pkt->ifp == NULL) {
 				dst = DIR_DROP;
 			} else {
 				dst = pkt->dn_dir;
@@ -795,10 +852,8 @@ dummynet_send(struct mbuf *m)
 			 * contiguous in the first mbuf header.
 			 * Insure this is true.
 			 */
-			if (m->m_len < ETHER_HDR_LEN &&
-			    (m = m_pullup(m, ETHER_HDR_LEN)) == NULL) {
-				printf("dummynet/ether: pullup failed, "
-				    "dropping packet\n");
+			if (m->m_len < ETHER_HDR_LEN && (m = m_pullup(m, ETHER_HDR_LEN)) == NULL) {
+				printf("dummynet/ether: pullup failed, " "dropping packet\n");
 				break;
 			}
 			ether_demux(m->m_pkthdr.rcvif, m);
@@ -827,8 +882,7 @@ tag_mbuf(struct mbuf *m, int dir, struct ip_fw_args *fwa)
 	struct dn_pkt_tag *dt;
 	struct m_tag *mtag;
 
-	mtag = m_tag_get(PACKET_TAG_DUMMYNET,
-		    sizeof(*dt), M_NOWAIT | M_ZERO);
+	mtag = m_tag_get(PACKET_TAG_DUMMYNET, sizeof(*dt), M_NOWAIT | M_ZERO);
 	if (mtag == NULL)
 		return 1;		/* Cannot allocate packet header. */
 	m_tag_prepend(m, mtag);		/* Attach to mbuf chain. */
@@ -862,8 +916,7 @@ dummynet_io(struct mbuf **m0, int dir, struct ip_fw_args *fwa)
 	struct dn_sch_inst *si;
 	struct dn_queue *q = NULL;	/* default */
 
-	int fs_id = (fwa->rule.info & IPFW_INFO_MASK) +
-		((fwa->rule.info & IPFW_IS_PIPE) ? 2*DN_MAX_ID : 0);
+	int fs_id = (fwa->rule.info & IPFW_INFO_MASK) + ((fwa->rule.info & IPFW_IS_PIPE) ? 2*DN_MAX_ID : 0);
 	DN_BH_WLOCK();
 	io_pkt++;
 	/* we could actually tag outside the lock, but who cares... */

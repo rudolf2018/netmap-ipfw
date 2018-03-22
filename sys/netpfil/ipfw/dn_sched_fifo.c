@@ -76,6 +76,17 @@ fifo_new_sched(struct dn_sch_inst *si)
 	/* This scheduler instance contains the queue */
 	struct dn_queue *q = (struct dn_queue *)(si + 1);
 
+if (0)
+{
+D("AAAA");
+FILE *logfp = fopen("/tmp/log.txt","a");
+if (logfp)
+{
+fprintf(logfp, "new scheduler FIFO\n");
+fclose(logfp);
+}
+}
+
         set_oid(&q->ni.oid, DN_QUEUE, sizeof(*q));
 	q->_si = si;
 	q->fs = si->sched->fs;
