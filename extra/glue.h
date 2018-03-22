@@ -268,7 +268,9 @@ struct  sockopt {
 #define	IP_DUMMYNET_FLUSH	(_IPFW_SOCKOPT_BASE +  22)
         /* 63 is missing */
 #define	IP_DUMMYNET_GET         (_IPFW_SOCKOPT_BASE + 24)
-#define	_IPFW_SOCKOPT_END	(_IPFW_SOCKOPT_BASE + 25)
+//RUDOLF
+#define	IP_DUMMYNET_BOOT        (_IPFW_SOCKOPT_BASE + 25)
+#define	_IPFW_SOCKOPT_END	(_IPFW_SOCKOPT_BASE + 26)
 
 /*
  * Part 3: userland stuff for linux/windows

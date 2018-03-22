@@ -97,11 +97,9 @@ ipfw_ctl_h(struct sockopt *s, int cmd, int dir, int len, void __user *user)
 	memset(&t, 0, sizeof(t));
 	s->sopt_td = &t;
 	
-	if (ip_fw_ctl_ptr && cmd != IP_DUMMYNET3 && (cmd == IP_FW3 ||
-	    cmd < IP_DUMMYNET_CONFIGURE))
+	if (ip_fw_ctl_ptr && cmd != IP_DUMMYNET3 && (cmd == IP_FW3 || cmd < IP_DUMMYNET_CONFIGURE))
 		ret = ip_fw_ctl_ptr(s);
-	else if (ip_dn_ctl_ptr && (cmd == IP_DUMMYNET3 ||
-	    cmd >= IP_DUMMYNET_CONFIGURE))
+	else if (ip_dn_ctl_ptr && (cmd == IP_DUMMYNET3 || cmd >= IP_DUMMYNET_CONFIGURE))
 		ret = ip_dn_ctl_ptr(s);
 	
 	return -ret;	/* errors are < 0 on linux */
@@ -184,8 +182,7 @@ my_mod_register(const char *name, int order,
  * trick is not supported yet so we call it manually.
  */
 int
-my_mod_register(const char *name, int order,
-        struct moduledata *mod, int (*init)(void *), int (*uninit)(void *))
+my_mod_register(const char *name, int order, struct moduledata *mod, int (*init)(void *), int (*uninit)(void *))
 {
         struct mod_args m;
  
@@ -210,9 +207,7 @@ init_children(void)
         printf("%s mod_idx value %d\n", __FUNCTION__, mod_idx);
         for (i = 0; i < mod_idx; i++) {
                 struct mod_args *m = &mods[i];
-                printf("+++ start module %d %s %s at %p order 0x%x\n",
-                        i, m->name, m->mod ? m->mod->name : "SYSINIT",
-                        m->mod, m->order);
+                printf("+++ start module %d %s %s at %p order 0x%x\n", i, m->name, m->mod ? m->mod->name : "SYSINIT", m->mod, m->order);
                 if (m->mod && m->mod->evhand)
                         m->mod->evhand(NULL, MOD_LOAD, m->mod->priv);
                 else if (m->init)
@@ -228,9 +223,7 @@ fini_children(void)
         /* Call the functions registered at init time. */
         for (i = mod_idx - 1; i >= 0; i--) {
                 struct mod_args *m = &mods[i];
-                printf("+++ end module %d %s %s at %p order 0x%x\n",
-                        i, m->name, m->mod ? m->mod->name : "SYSINIT",
-                        m->mod, m->order);
+                printf("+++ end module %d %s %s at %p order 0x%x\n", i, m->name, m->mod ? m->mod->name : "SYSINIT", m->mod, m->order);
                 if (m->mod && m->mod->evhand)
                         m->mod->evhand(NULL, MOD_UNLOAD, m->mod->priv);
                 else if (m->uninit)
@@ -245,10 +238,8 @@ ipfw_module_init(void)
 	int ret = 0;
 
 	my_mod_register("ipfw",  1, moddesc_ipfw, NULL, NULL);
-	my_mod_register("sy_ipfw",  2, NULL,
-		sysinit_ipfw_init, sysuninit_ipfw_destroy);
-	my_mod_register("sy_Vnet_ipfw",  3, NULL,
-		sysinit_vnet_ipfw_init, sysuninit_vnet_ipfw_uninit);
+	my_mod_register("sy_ipfw",  2, NULL, sysinit_ipfw_init, sysuninit_ipfw_destroy);
+	my_mod_register("sy_Vnet_ipfw",  3, NULL, sysinit_vnet_ipfw_init, sysuninit_vnet_ipfw_uninit);
 	my_mod_register("dummynet",  4, moddesc_dummynet, NULL, NULL);
 	my_mod_register("dn_fifo",  5, moddesc_dn_fifo, NULL, NULL);
 	my_mod_register("dn_wf2qp",  6, moddesc_dn_wf2qp, NULL, NULL);

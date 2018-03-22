@@ -129,9 +129,7 @@ again:
 					dst->buf_idx = src->buf_idx;
 					src->buf_idx = tmp;
 				} else if (port->peer->allocator_id == 1) { // no indirect
-					nm_pkt_copy(NETMAP_BUF(sr, src->buf_idx),
-						NETMAP_BUF(ring, dst->buf_idx),
-						dst->len);
+					nm_pkt_copy(NETMAP_BUF(sr, src->buf_idx), NETMAP_BUF(ring, dst->buf_idx), dst->len);
 				} else {
 					dst->ptr = (uintptr_t)NETMAP_BUF(sr, src->buf_idx);
 					dst->flags = NS_INDIRECT;
@@ -141,9 +139,7 @@ again:
 
 				ND("copy from mbuf");
 				dst->len = m->__m_extlen;
-				nm_pkt_copy(m->__m_extbuf,
-					NETMAP_BUF(ring, dst->buf_idx),
-					dst->len);
+				nm_pkt_copy(m->__m_extbuf, NETMAP_BUF(ring, dst->buf_idx), dst->len);
 				FREE_PKT(m);
 			} else {
 				panic("bad slot");
@@ -240,8 +236,7 @@ netmap_read(struct sess *sess, void *arg)
 		idx = slot->buf_idx;
 		buf = (u_char *)NETMAP_BUF(ring, idx);
 		if (idx < 2) {
-		    D("%s bogus RX index at offset %d",
-			    srcp->nifp->ni_name, src);
+		    D("%s bogus RX index at offset %d", srcp->nifp->ni_name, src);
 		    sleep(2);
 		}
 		__builtin_prefetch(buf);

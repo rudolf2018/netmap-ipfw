@@ -509,8 +509,7 @@ listener(struct sess *sess, void *arg)
 		ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 		ND("TCP_NODELAY returns %d", ret);
 	}
-	new_session(fd, sess->arg ? sockopt_handler: packet_handler,
-		sess->arg, WANT_READ);
+	new_session(fd, sess->arg ? sockopt_handler: packet_handler, sess->arg, WANT_READ);
 	return 0;
 }
 
@@ -564,7 +563,7 @@ do_server(const char *addr, int port)
 	return fd;
 }
 
-extern int ipfw_module_init(void);
+extern int ipfw_module_init();
 
 /*
  * main program for ipfw kernel side when running an userspace emulation:
@@ -637,7 +636,7 @@ mainloop(int argc, char *argv[])
 		} else {
 			skipped++;
 		}
-		RD(1, "callouts %lu skipped %lu", (u_long)callouts, (u_long)skipped);
+		RD(1, "callouts %lu skipped %lu ticks %d", (u_long)callouts, (u_long)skipped, ticks);
 	}
 	ipfw_destroy();
 	return 0;
