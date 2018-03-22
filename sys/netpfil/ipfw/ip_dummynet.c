@@ -1277,7 +1277,7 @@ D("set link [%d] bandwidth to %ld [%d]", p->link_nr, p->bandwidth, p->oid.id);
 	if (p->bandwidth > BANDWIDTH_5GBIT)		// 5000MBIT + ID (GBIT)
 	{
 		bwfid = (p->bandwidth / BANDWIDTH_1MBIT) % 1000;
-		sprintf(bwfn, "bwprofs/bw%04d.txt", bwfid);
+		sprintf(bwfn, "/home/bwprofs/bw%04d.txt", bwfid);
 D("Reading Bandwidth profile from file [%s]", bwfn);
 		if ((bwfp = fopen(bwfn, "r"))==NULL)
 		{
@@ -1780,6 +1780,10 @@ do_config(void *p, int l)
 			DN_BH_WLOCK();
 			dummynet_flush();
 			DN_BH_WUNLOCK();
+			break;
+		//RUDOLF
+		case DN_CMD_REBOOT:
+			exit(0);
 			break;
 		case DN_TEXT:	/* store argument the next block */
 			prev = NULL;

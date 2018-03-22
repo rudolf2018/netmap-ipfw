@@ -222,8 +222,7 @@ wf2qp_dequeue(struct dn_sch_inst *_si)
 	if (sch->elements == 0 && neh->elements > 0) {
 		si->V = MAX64(si->V, HEAP_TOP(neh)->key);
 	}
-	while (neh->elements > 0 &&
-		    DN_KEY_LEQ(HEAP_TOP(neh)->key, si->V)) {
+	while (neh->elements > 0 && DN_KEY_LEQ(HEAP_TOP(neh)->key, si->V)) {
 		q = HEAP_TOP(neh)->object;
 		alg_fq = (struct wf2qp_queue *)q;
 		heap_extract(neh, NULL);
@@ -260,10 +259,17 @@ wf2qp_new_sched(struct dn_sch_inst *_si)
 	struct wf2qp_si *si = (struct wf2qp_si *)(_si + 1);
 	int ofs = offsetof(struct wf2qp_queue, heap_pos);
 
+if (1)
+{
+FILE *logfp = fopen("/tmp/log.txt","a");
+if (logfp)
+{
+fprintf(logfp, "new scheduler WF2Q\n");
+fclose(logfp);
+}
+}
 	/* all heaps support extract from middle */
-	if (heap_init(&si->idle_heap, 16, ofs) ||
-	    heap_init(&si->sch_heap, 16, ofs) ||
-	    heap_init(&si->ne_heap, 16, ofs)) {
+	if (heap_init(&si->idle_heap, 16, ofs) || heap_init(&si->sch_heap, 16, ofs) || heap_init(&si->ne_heap, 16, ofs)) {
 		heap_free(&si->ne_heap);
 		heap_free(&si->sch_heap);
 		heap_free(&si->idle_heap);
@@ -287,8 +293,7 @@ wf2qp_free_sched(struct dn_sch_inst *_si)
 static int
 wf2qp_new_fsk(struct dn_fsk *fs)
 {
-	ipdn_bound_var(&fs->fs.par[0], 1,
-		1, 100, "WF2Q+ weight");
+	ipdn_bound_var(&fs->fs.par[0], 1, 1, 100, "WF2Q+ weight");
 	return 0;
 }
 

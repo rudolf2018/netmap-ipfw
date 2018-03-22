@@ -295,6 +295,16 @@ qfq_new_queue(struct dn_queue *_q)
 	int i;
 	uint32_t w;	/* approximated weight */
 
+if (1)
+{
+FILE *logfp = fopen("/tmp/log.txt","a");
+if (logfp)
+{
+fprintf(logfp, "new scheduler QFQ\n");
+fclose(logfp);
+}
+}
+
 	/* import parameters from the flowset. They should be correct
 	 * already.
 	 */

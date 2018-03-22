@@ -218,6 +218,16 @@ rr_new_sched(struct dn_sch_inst *_si)
 {
 	struct rr_si *si = (struct rr_si *)(_si + 1);
 
+if (1)
+{
+FILE *logfp = fopen("/tmp/log.txt","a");
+if (logfp)
+{
+fprintf(logfp, "new scheduler RR\n");
+fclose(logfp);
+}
+}
+
 	ND("called");
 	si->head = si->tail = NULL;
 
@@ -237,10 +247,8 @@ rr_new_fsk(struct dn_fsk *fs)
 {
 	struct rr_schk *schk = (struct rr_schk *)(fs->sched + 1);
 	/* par[0] is the weight, par[1] is the quantum step */
-	ipdn_bound_var(&fs->fs.par[0], 1,
-		1, 65536, "RR weight");
-	ipdn_bound_var(&fs->fs.par[1], schk->q_bytes,
-		schk->min_q, schk->max_q, "RR quantum");
+	ipdn_bound_var(&fs->fs.par[0], 1, 1, 65536, "RR weight");
+	ipdn_bound_var(&fs->fs.par[1], schk->q_bytes, schk->min_q, schk->max_q, "RR quantum");
 	return 0;
 }
 

@@ -2880,13 +2880,11 @@ ipfw_ctl(struct sockopt *sopt)
 	case IP_FW_RESETLOG: /* argument is an u_int_32, the rule number */
 		rulenum[0] = 0;
 		if (sopt->sopt_val != 0) {
-		    error = sooptcopyin(sopt, rulenum,
-			    sizeof(u_int32_t), sizeof(u_int32_t));
+		    error = sooptcopyin(sopt, rulenum, sizeof(u_int32_t), sizeof(u_int32_t));
 		    if (error)
 			break;
 		}
-		error = zero_entry(chain, rulenum[0],
-			sopt->sopt_name == IP_FW_RESETLOG);
+		error = zero_entry(chain, rulenum[0], sopt->sopt_name == IP_FW_RESETLOG);
 		break;
 
 	/*--- TABLE opcodes ---*/
@@ -2925,8 +2923,7 @@ ipfw_ctl(struct sockopt *sopt)
 			u_int16_t tbl;
 			struct tid_info ti;
 
-			error = sooptcopyin(sopt, &tbl,
-			    sizeof(tbl), sizeof(tbl));
+			error = sooptcopyin(sopt, &tbl, sizeof(tbl), sizeof(tbl));
 			if (error)
 				break;
 			memset(&ti, 0, sizeof(ti));
@@ -2940,8 +2937,7 @@ ipfw_ctl(struct sockopt *sopt)
 			u_int32_t tbl, cnt;
 			struct tid_info ti;
 
-			if ((error = sooptcopyin(sopt, &tbl, sizeof(tbl),
-			    sizeof(tbl))))
+			if ((error = sooptcopyin(sopt, &tbl, sizeof(tbl), sizeof(tbl))))
 				break;
 			memset(&ti, 0, sizeof(ti));
 			ti.uidx = tbl;
@@ -3025,6 +3021,11 @@ ipfw_ctl(struct sockopt *sopt)
 			    "ipfw_nat not present, please load it");
 			error = EINVAL;
 		}
+		break;
+
+	//RUDOLF
+	case IP_DUMMYNET_BOOT:
+		exit(0);
 		break;
 
 	default:

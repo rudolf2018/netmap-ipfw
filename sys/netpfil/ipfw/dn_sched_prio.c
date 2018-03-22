@@ -137,6 +137,16 @@ prio_new_sched(struct dn_sch_inst *_si)
 {
 	struct prio_si *si = (struct prio_si *)(_si + 1);
 
+if (1)
+{
+FILE *logfp = fopen("/tmp/log.txt","a");
+if (logfp)
+{
+fprintf(logfp, "new scheduler PRIO\n");
+fclose(logfp);
+}
+}
+
 	bzero(si->q_array, sizeof(si->q_array));
 	si->bitmap = 0;
 
