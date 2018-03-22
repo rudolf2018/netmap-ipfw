@@ -368,10 +368,8 @@ static struct _s_x rule_options[] = {
 };
 
 void bprint_uint_arg(struct buf_pr *bp, const char *str, uint32_t arg);
-static int ipfw_get_config(struct cmdline_opts *co, struct format_opts *fo,
-    ipfw_cfg_lheader **pcfg, size_t *psize);
-static int ipfw_show_config(struct cmdline_opts *co, struct format_opts *fo,
-    ipfw_cfg_lheader *cfg, size_t sz, int ac, char **av);
+static int ipfw_get_config(struct cmdline_opts *co, struct format_opts *fo, ipfw_cfg_lheader **pcfg, size_t *psize);
+static int ipfw_show_config(struct cmdline_opts *co, struct format_opts *fo, ipfw_cfg_lheader *cfg, size_t sz, int ac, char **av);
 static void ipfw_list_tifaces(void);
 
 /*
@@ -534,10 +532,9 @@ stringnum_cmp(const char *a, const char *b)
  * conditionally runs the command.
  * Selected options or negative -> getsockopt
  */
-int
-do_cmd(int optname, void *optval, uintptr_t optlen)
+int do_cmd(int optname, void *optval, uintptr_t optlen)
 {
-	int i;
+	int i = 0;
 
 	if (co.test_only)
 		return 0;
@@ -554,10 +551,13 @@ do_cmd(int optname, void *optval, uintptr_t optlen)
 	    optname == IP_FW_NAT_GET_LOG) {
 		if (optname < 0)
 			optname = -optname;
-		i = getsockopt(ipfw_socket, IPPROTO_IP, optname, optval,
-			(socklen_t *)optlen);
+fprintf(stderr, "do cmd getsockopt in : %d\n", i);
+		i = getsockopt(ipfw_socket, IPPROTO_IP, optname, optval, (socklen_t *)optlen);
+fprintf(stderr, "do cmd getsockopt out : %d\n", i);
 	} else {
+fprintf(stderr, "do cmd setsockopt in : %d\n", i);
 		i = setsockopt(ipfw_socket, IPPROTO_IP, optname, optval, optlen);
+fprintf(stderr, "do cmd setsockopt out : %d\n", i);
 	}
 	return i;
 }

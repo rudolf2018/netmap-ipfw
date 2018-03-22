@@ -370,11 +370,10 @@ list_pipes(struct dn_id *oid, struct dn_id *end)
 	    else
 		sprintf(bwbuf, "%7.3f bit/s ", b);
 
-	    if (humanize_number(burst, sizeof(burst), p->burst,
-		    "", HN_AUTOSCALE, 0) < 0 || co.verbose)
+	    if (humanize_number(burst, sizeof(burst), p->burst, "", HN_AUTOSCALE, 0) < 0 || co.verbose)
 		sprintf(burst, "%d", (int)p->burst);
-	    sprintf(buf, "%05d: %s %4d ms burst %s",
-		p->link_nr % DN_MAX_ID, bwbuf, p->delay, burst);
+
+	    sprintf(buf, "%05d: %s %4d ms burst %s", p->link_nr % DN_MAX_ID, bwbuf, p->delay, burst);
 	    }
 	    break;
 
@@ -529,7 +528,7 @@ is_valid_number(const char *s)
  * set clocking interface or bandwidth value
  */
 static void
-read_bandwidth(char *arg, int *bandwidth, char *if_name, int namelen)
+read_bandwidth(char *arg, int64_t *bandwidth, char *if_name, int namelen)
 {
 	if (*bandwidth != -1)
 		warnx("duplicate token, override bandwidth value!");
@@ -546,10 +545,10 @@ read_bandwidth(char *arg, int *bandwidth, char *if_name, int namelen)
 		if_name[namelen] = '\0';
 		*bandwidth = 0;
 	} else {	/* read bandwidth value */
-		int bw;
+		int64_t bw;
 		char *end = NULL;
 
-		bw = strtoul(arg, &end, 0);
+		bw = strtoull(arg, &end, 0);
 		if (*end == 'K' || *end == 'k') {
 			end++;
 			bw *= 1000;
@@ -557,9 +556,7 @@ read_bandwidth(char *arg, int *bandwidth, char *if_name, int namelen)
 			end++;
 			bw *= 1000000;
 		}
-		if ((*end == 'B' &&
-			_substrcmp2(end, "Bi", "Bit/s") != 0) ||
-		    _substrcmp2(end, "by", "bytes") == 0)
+		if ((*end == 'B' && _substrcmp2(end, "Bi", "Bit/s") != 0) || _substrcmp2(end, "by", "bytes") == 0)
 			bw *= 8;
 
 		if (bw < 0)
@@ -1170,8 +1167,7 @@ end_mask:
 		long limit;
 
 		len = sizeof(limit);
-		if (sysctlbyname("net.inet.ip.dummynet.pipe_byte_limit",
-			&limit, &len, NULL, 0) == -1)
+		if (sysctlbyname("net.inet.ip.dummynet.pipe_byte_limit", &limit, &len, NULL, 0) == -1)
 			limit = 1024*1024;
 		if (fs->qsize > limit)
 			errx(EX_DATAERR, "queue size must be < %ldB", limit);
@@ -1180,8 +1176,7 @@ end_mask:
 		long limit;
 
 		len = sizeof(limit);
-		if (sysctlbyname("net.inet.ip.dummynet.pipe_slot_limit",
-			&limit, &len, NULL, 0) == -1)
+		if (sysctlbyname("net.inet.ip.dummynet.pipe_slot_limit", &limit, &len, NULL, 0) == -1)
 			limit = 100;
 		if (fs->qsize > limit)
 			errx(EX_DATAERR, "2 <= queue size <= %ld", limit);
@@ -1260,11 +1255,18 @@ end_mask:
 		err(1, "setsockopt(%s)", "IP_DUMMYNET_CONFIGURE");
 }
 
-void
-dummynet_flush(void)
+void dummynet_flush(void)
 {
 	struct dn_id oid;
 	oid_fill(&oid, sizeof(oid), DN_CMD_FLUSH, DN_API_VERSION);
+	do_cmd(IP_DUMMYNET3, &oid, oid.len);
+}
+
+//RUDOLF
+void dummynet_reboot(void)
+{
+	struct dn_id oid;
+	oid_fill(&oid, sizeof(oid), DN_CMD_REBOOT, DN_API_VERSION);
 	do_cmd(IP_DUMMYNET3, &oid, oid.len);
 }
 

@@ -33,6 +33,9 @@
 
 #include "ipfw2.h"
 
+//RUDOLF
+extern void dummynet_reboot();
+
 static void
 help(void)
 {
@@ -74,6 +77,8 @@ help(void)
 "	mac ... | mac-type LIST | proto LIST | {recv|xmit|via} {IF|IPADDR} |\n"
 "	setup | {tcpack|tcpseq|tcpwin} NN | tcpflags SPEC | tcpoptions SPEC |\n"
 "	tcpdatalen LIST | verrevpath | versrcreach | antispoof\n"
+"\n"
+"extra command:   boot\n"
 );
 
 	exit(0);
@@ -427,6 +432,18 @@ ipfw_main(int oldac, char **oldav)
 			ipfw_delete(av);
 		else if (_substrcmp(*av, "flush") == 0)
 			ipfw_flush(co.do_force);
+//RUDOLF
+		else if (_substrcmp(*av, "boot") == 0)
+		{
+			pid_t pid = fork();
+			if (pid == 0)
+			{
+				sleep(2);
+				kill(getppid(), SIGTERM);
+			}
+			dummynet_reboot();
+			exit(0);
+		}
 		else if (_substrcmp(*av, "zero") == 0)
 			ipfw_zero(ac, av, 0 /* IP_FW_ZERO */);
 		else if (_substrcmp(*av, "resetlog") == 0)
