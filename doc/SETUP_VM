@@ -1,0 +1,44 @@
+
+The VM Binary dummynetVM.zip contains the running environment for the network emulator.
+
+Before installation, you will need a machine with at least 3 network interfaces, one to serve as the adminstration port,
+the other two as the traffic bridging ports.
+
+Installation steps:
+
+1. Download and install VMware player/workstation on your machine.
+2. Download and unpack the dummynetVM.zip into a disk folder.
+3. Open the dummynetVM in the VMware player/workstation.
+4. The freebsd system will boot up to text login screen.
+5. Now login as "root", with password "abc123".
+
+6. There are 3 network interfaces defined on this VM, they are em0, em1, and em2.
+7. The em0 interface is the admin interface, the em1 and em2 are the data interfaces for bridging traffic. You will need
+to associate the actual network interfaces through the VMware settings to the VM's em0, em1 and em2 ports.
+
+8. The emulator consists of a core server application and a web UI. The web UI is built around apache web server
+and is ready when the VM boots up.
+9. Before running the emulator core application it has to be configured for the actual data ports in the startup script.
+10. After login to the freebsd system, please edit the emulator's startup script using following commands :
+
+SHELL>  cd /root/rudolf-netmap-ipfw/
+SHELL>  vim looprun_emulator
+
+Update the two lines:
+DEV1=em1
+DEV2=em2
+
+with the actual network interfaces. Save the file. Now you can run the script to start the emulator.
+
+SHELL> sh ./looprun_emulator
+
+11. The default admin. IP address of this VM is 192.168.80.221. This may not match the sub-network you are using. You
+can change this by editing the /etc/rc.conf file.
+
+12. After the IP address is updated, now you can use a web browser to check out the web UI:
+
+http://<admin ip address>/
+
+This web UI allows you to control the functions of the emulator.
+
+
